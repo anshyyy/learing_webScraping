@@ -1,8 +1,7 @@
 from bs4 import BeautifulSoup
-import time
 import requests
 import re
-
+import gspread
 
 def fetch():
     url = requests.get('https://www.gktoday.in/quizbase/current-affairs-quiz-november-2022')
@@ -27,7 +26,20 @@ def fetch():
             'Answer': answer
         }
         store['question_' + num] = mp
-    print(store)
+    return store
 
 
-fetch()
+def wrtieToSheets(store):
+    gc = gspread.service_account('creds.json')
+    sh = gc.open('quizSpreadsheet').sheet1
+    for i,val in enumerate(store):
+        sh.append_row([str(i),store[val]['Text'],store[val]['Options'][0],store[val]['Options'][1],store[val]['Options'][2],store[val]['Options'][3],store[val]['Answer']])
+    return
+
+
+
+
+
+
+dataStore = fetch()
+wrtieToSheets(dataStore)
