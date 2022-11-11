@@ -1,10 +1,12 @@
+import pprint
+
 from bs4 import BeautifulSoup
 import requests
 import re
 import gspread
 
-def fetch():
-    url = requests.get('https://www.gktoday.in/quizbase/current-affairs-quiz-november-2022')
+def fetch(index):
+    url = requests.get(f'https://www.gktoday.in/quizbase/current-affairs-quiz-november-2022?pageno={index}')
     soup = BeautifulSoup(url.content, features='lxml')
     mcqs = soup.find_all('div', class_="sques_quiz")
     store = {}
@@ -37,9 +39,17 @@ def wrtieToSheets(store):
     return
 
 
+def getAllMcqOfaNovemberMonth():
+    i = 1
+    while(True):
+        dataStore = fetch(i)
+        if len(dataStore)==0:
+            break
+        i+=1
+        wrtieToSheets(dataStore)
+
+
+getAllMcqOfaNovemberMonth()
 
 
 
-
-dataStore = fetch()
-wrtieToSheets(dataStore)
