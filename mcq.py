@@ -1,19 +1,22 @@
 from bs4 import BeautifulSoup
 import requests
 import re
-import time
+import os
 import datetime
-import gspread
+import csv
 
 months = [('january', 1), ('february', 2), ('march', 3), ('april', 4), ('may', 5), ('june', 6), ('july', 7),
           ('august', 8), ('september', 9), ('october', 10), ('november', 11),
           ('december', 12)]
+years = ['2017','2018','2019','2020','2021','2022']
 
+def fetch(index, month, year):
+    url = requests.get(f'https://www.gktoday.in/quizbase/current-affairs-quiz-{month}-{year}?pageno={index}')
 
-def fetch(index, month):
-    url = requests.get(f'https://www.gktoday.in/quizbase/current-affairs-quiz-{month}-2022?pageno={index}')
     if url.status_code // 100 == 4:
-        return {}
+        url = requests.get(f'https://www.gktoday.in/quizbase/current-affairs-quiz-questions-{month}-{year}?pageno={index}')
+        if url.status_code //100 == 4:
+            return {}
     soup = BeautifulSoup(url.content, features='lxml')
     mcqs = soup.find_all('div', class_="sques_quiz")
     store = {}
@@ -41,41 +44,57 @@ def fetch(index, month):
     return store
 
 
-def wrtieToSheets(month):
-    curr_month = datetime.datetime.now()
-    curr_month = curr_month.strftime('%m')
-    if month[1] > int(curr_month):
+def wrtieToSheets(month,year):
+    today = datetime.datetime.now()
+    curr_month = today.strftime('%m')
+    curr_year = today.strftime('%Y')
+    if month[1] > int(curr_month) and year == curr_year :
         return
 
     month = month[0]
-    gc = gspread.service_account('creds.json')
-    sh = gc.open('quizSpreadsheet')
-    worksheet = sh.add_worksheet(title=month, rows=200, cols=6)
+    # gc = gspread.service_account('creds.json')
+    # sh = gc.open('quizSpreadsheet')
+    # worksheet = sh.add_worksheet(title=month, rows=200, cols=6)
+    try :
+        with open(f'F:/Current Affairs/{year}/{month}.csv', 'w') as file:
+            worksheet = csv.writer(file)
+    except FileNotFoundError:
+        path_dir = "F:/Current Affairs/" + year
+        os.mkdir(path_dir)
+    finally:
+        # worksheet.format('A1:G1', {'textFormat': {'bold': True}})
+        with open(f'F:/Current Affairs/{year}/{month}.csv', 'w') as file:
+            worksheet = csv.writer(file)
+            worksheet.writerow(['Serial No.', "Question", "A", "B", "C", "D", "Answer"])
+            page_id = 1
+            s_id = 1
+            while True:
+                # print(month,year)
+                store = fetch(page_id, month,year)
+                # print(store)
+                if len(store) == 0:
+                    break
+                for val in store:
+                    try:
+                        worksheet.writerow(
+                            [str(s_id), store[val]['Text'], store[val]['Options'][0], store[val]['Options'][1],
+                             store[val]['Options'][2], store[val]['Options'][3], store[val]['Answer']])
+                    except:
+                        pass
+                    s_id += 1
+                page_id += 1
 
-    worksheet.format('A1:G1', {'textFormat': {'bold': True}})
-    worksheet.append_row(['Serial No.', "Question", "A", "B", "C", "D", "Answer"])
-    page_id = 1
-    s_id = 1
-    while True:
-        store = fetch(page_id, month)
-        if len(store) == 0:
-            break
-        for i, val in enumerate(store):
-            try:
-                worksheet.append_row([str(s_id), store[val]['Text'], store[val]['Options'][0], store[val]['Options'][1],
-                                      store[val]['Options'][2], store[val]['Options'][3], store[val]['Answer']])
-            except:
-                pass
-            s_id += 1
-        page_id += 1
-
-    return
+        return
 
 
-def getAllMcqOfaAllMonth():
+def getAllMcqOfaAllMonth(year):
     for month in months:
-        wrtieToSheets(month)
-        time.sleep(60)
+        wrtieToSheets(month,year)
+        # time.sleep(60)
 
+def getAllYear():
+    for y in years:
+        getAllMcqOfaAllMonth(y)
 
-getAllMcqOfaAllMonth()
+getAllYear()
+
